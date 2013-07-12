@@ -1,0 +1,4 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android" >
+    <item android:id="@+id/item_ctrl" android:actionLayout="@layout/button_crl_layout" android:showAsAction="always"></item>
+
+</menu>

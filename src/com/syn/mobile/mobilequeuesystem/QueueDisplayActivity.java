@@ -1,10 +1,8 @@
 package com.syn.mobile.mobilequeuesystem;
 
-import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 
@@ -16,24 +14,17 @@ import syn.pos.data.model.QueueInfo;
 
 import com.j1tth4.mobile.core.util.MediaManager;
 import com.j1tth4.mobile.core.util.DotNetWebServiceTask;
+import com.j1tth4.mobile.core.util.MyMediaPlayer;
 
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
-import android.media.MediaPlayer;
-import android.media.MediaPlayer.OnBufferingUpdateListener;
-import android.media.MediaPlayer.OnCompletionListener;
-import android.media.MediaPlayer.OnPreparedListener;
-import android.media.MediaPlayer.OnVideoSizeChangedListener;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.provider.Settings.Secure;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -48,7 +39,6 @@ import android.widget.BaseAdapter;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
-import android.widget.Toast;
 /**
  * An example full-screen activity that shows and hides the system UI (i.e.
  * status bar and navigation/system bar) with user interaction.
@@ -56,9 +46,7 @@ import android.widget.Toast;
  * @see SystemUiHider
  */
 @SuppressLint("NewApi")
-public class QueueDisplayActivity extends Activity implements
-		OnBufferingUpdateListener, OnCompletionListener, OnPreparedListener,
-		OnVideoSizeChangedListener, SurfaceHolder.Callback {
+public class QueueDisplayActivity extends Activity {
 	/**
 	 * Whether or not the system UI should be auto-hidden after
 	 * {@link #AUTO_HIDE_DELAY_MILLIS} milliseconds.
@@ -89,25 +77,9 @@ public class QueueDisplayActivity extends Activity implements
 
 	private static final String TAG = "QueueDisplayVDO";
 	private SurfaceView surface;
-	private SurfaceHolder holder;
-	private MediaPlayer mPlayer;
-	private MediaPlayer mSoundPlayer;
-	
-	private int mVideoWidth;
-	private int mVideoHeight;	
-	private boolean mIsVideoSizeKnown = false;
-	private boolean mIsVideoReadyToBePlayed = false;
 	
 	private String deviceCode;
 	private GlobalVar globalVar;
-	private MediaManager vdoManager;
-	private ArrayList<HashMap<String, String>> vdoList = 
-			new ArrayList<HashMap<String, String>>();
-	private List<String> queueSoundList = 
-			new ArrayList<String>();
-	
-	private int currSoundIndex = 0;
-	private int currVdoIndex = 0;
 
 	private ListView lvGroupA;
 	private ListView lvGroupB;
@@ -147,55 +119,31 @@ public class QueueDisplayActivity extends Activity implements
 		tvSumGroupB = (TextView) findViewById(R.id.textViewSumGroupB);
 		tvSumGroupC = (TextView) findViewById(R.id.textViewSumGroupC);
 		tvMarquee = (TextView) findViewById(R.id.textViewMarquee);
-		
-		tvMarquee.setAnimation(scrollingText());
+		tvMarquee.setSelected(true);
 		
 		Date date = new Date();
 		SimpleDateFormat dateFormat = new SimpleDateFormat("d MMMM yyyy", Locale.US);
 		tvDate.setText(dateFormat.format(date));
 		
 		surface = (SurfaceView) findViewById(R.id.surfaceView1);
-		holder = surface.getHolder();
-		holder.addCallback(this);
-
-		mPlayer = new MediaPlayer();
-		//mPlayer.setVideoScalingMode(MediaPlayer.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING);
-
-		mPlayer.setScreenOnWhilePlaying(true);
-		mPlayer.setOnBufferingUpdateListener(this);
-		mPlayer.setOnCompletionListener(this);
-		mPlayer.setOnPreparedListener(this);
-		mPlayer.setOnVideoSizeChangedListener(this);
-		//mPlayer.setVolume(0, 0);
-		//mPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
 		
-		// read playlist
-		readPlaylist();
-
-		mSoundPlayer = new MediaPlayer();
-		mSoundPlayer.setOnCompletionListener(new OnCompletionListener(){
-
-			@Override
-			public void onCompletion(MediaPlayer mp) {
-				mPlayer.setVolume(1, 1);
-				if(currSoundIndex < (queueSoundList.size() - 1)){
-					currSoundIndex++;
-				}else{
-					currSoundIndex = 0;
-				}
-				playSound();
-			}
-			
-		});
-		mSoundPlayer.setOnPreparedListener(new OnPreparedListener(){
-
-			@Override
-			public void onPrepared(MediaPlayer mp) {
-				mPlayer.setVolume(0, 0);
-				mSoundPlayer.start();
-			}
-			
-		});
+		MyMediaPlayer mPlayer = 
+				new MyMediaPlayer(QueueDisplayActivity.this, surface, 
+						globalVar.getVdoPath(), new MyMediaPlayer.MediaPlayerStateListener() {
+							
+							@Override
+							public void onPlayedFileName(String fileName) {
+								// TODO Auto-generated method stub
+								
+							}
+							
+							@Override
+							public void onError(Exception e) {
+								// TODO Auto-generated method stub
+								
+							}
+						});
+		
 		// update queue
 		handler = new Handler();
 		handler.post(updateQueueList);
@@ -423,24 +371,20 @@ public class QueueDisplayActivity extends Activity implements
                 
 				MediaManager mediaManager = new MediaManager(QueueDisplayActivity.this, "QueueSound");
 				
-				queueSoundList = new ArrayList<String>();
 				tvCalledA.setText("");
 				if(queueDisplayInfo.getSzCurQueueGroupA() != "")
 				{
 					tvCalledA.setText(queueDisplayInfo.getSzCurQueueGroupA());
-					queueSoundList.add(mediaManager.getPathFile(queueDisplayInfo.getSzCurQueueGroupA()));
 				}
 				
 				tvCalledB.setText("");
 				if(queueDisplayInfo.getSzCurQueueGroupB() != ""){
 					tvCalledB.setText(queueDisplayInfo.getSzCurQueueGroupB());
-					queueSoundList.add(mediaManager.getPathFile(queueDisplayInfo.getSzCurQueueGroupB()));
 				}
 				
 				tvCalledC.setText("");
 				if(queueDisplayInfo.getSzCurQueueGroupC() != ""){
 					tvCalledC.setText(queueDisplayInfo.getSzCurQueueGroupC());
-					queueSoundList.add(mediaManager.getPathFile(queueDisplayInfo.getSzCurQueueGroupC()));
 				}
 
 				//playSound();
@@ -468,187 +412,5 @@ public class QueueDisplayActivity extends Activity implements
 			}
 		}
 		return filterGroupList;
-	}
-
-	private void playSound(){
-		if(queueSoundList.size() > 0){
-			try {
-				mSoundPlayer.reset();
-				mSoundPlayer.setDataSource(queueSoundList.get(currSoundIndex));
-				mSoundPlayer.prepare();
-			} catch (IllegalArgumentException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (SecurityException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (IllegalStateException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-	}
-	
-	private void playVideo() {
-		doCleanUp();
-		if(vdoList.size() > 0){
-			try {
-				mPlayer.reset();
-				mPlayer.setDataSource(vdoList.get(currVdoIndex).get("vdoPath"));
-				//mPlayer.setDataSource(Uri.parse("rtsp://stream1.tv.jai-d.com:1935/edge4/c03").toString());
-				mPlayer.setDisplay(holder);
-				mPlayer.prepare();
-			} catch (IllegalArgumentException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (SecurityException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (IllegalStateException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}else{
-			new AlertDialog.Builder(QueueDisplayActivity.this)
-			.setTitle("Error")
-			.setMessage("Not found video file.")
-			.setNeutralButton("Close", new DialogInterface.OnClickListener() {
-				
-				@Override
-				public void onClick(DialogInterface dialog, int which) {
-					dialog.dismiss();
-				}
-			})
-			.show();
-		}
-	}
-
-	@Override
-	public void surfaceChanged(SurfaceHolder holder, int format, int width,
-			int height) {
-		Log.d(TAG, "surfaceChanged called");
-	}
-
-	@Override
-	public void surfaceCreated(SurfaceHolder holder) {
-		Log.d(TAG, "surfaceCreated called");
-		playVideo();
-	}
-
-	@Override
-	public void surfaceDestroyed(SurfaceHolder holder) {
-		Log.d(TAG, "surfaceDestroyed called");
-	}
-
-	@Override
-	public void onVideoSizeChanged(MediaPlayer mp, int width, int height) {
-		Log.v(TAG, "onVideoSizeChanged called");
-		if (width == 0 || height == 0) {
-			Log.e(TAG, "invalid video width(" + width + ") or height(" + height
-					+ ")");
-			return;
-		}
-		mIsVideoSizeKnown = true;
-		mVideoWidth = width;
-		mVideoHeight = height;
-		if (mIsVideoReadyToBePlayed && mIsVideoSizeKnown) {
-			startVideoPlayback();
-		}
-	}
-
-	@Override
-	public void onPrepared(MediaPlayer mp) {
-		Log.d(TAG, "onPrepared called");
-		mIsVideoReadyToBePlayed = true;
-		if (mIsVideoReadyToBePlayed && mIsVideoSizeKnown) {
-			startVideoPlayback();
-		}
-	}
-
-	@Override
-	public void onCompletion(MediaPlayer mp) {
-		Log.d(TAG, "surfaceDestroyed called");
-		
-		if(currVdoIndex < (vdoList.size() - 1)){
-			currVdoIndex++;
-			playVideo();
-		}else{
-			currVdoIndex = 0;
-			
-			// reload playlist
-			readPlaylist();
-			
-			playVideo();
-		}
-	}
-
-	@Override
-	public void onBufferingUpdate(MediaPlayer mp, int percent) {
-		Log.d(TAG, "onBufferingUpdate percent:" + percent);
-	}
-	
-	@Override
-    protected void onPause() {
-        super.onPause();
-        releaseMediaPlayer();
-        doCleanUp();
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        releaseMediaPlayer();
-        doCleanUp();
-    }
-
-    private void releaseMediaPlayer() {
-        if (mPlayer != null) {
-            mPlayer.release();
-            mPlayer = null;
-        }
-    }
-	
-    private void doCleanUp() {
-		mVideoWidth = 0;
-		mVideoHeight = 0;
-		mIsVideoReadyToBePlayed = false;
-		mIsVideoSizeKnown = false;
-	}
-
-	private void startVideoPlayback() {
-		Log.v(TAG, "startVideoPlayback");
-		holder.setFixedSize(mVideoWidth, mVideoHeight);
-		holder.setKeepScreenOn(true);
-		mPlayer.start();
-		
-		Toast.makeText(getApplicationContext(), vdoList.get(currVdoIndex).get("vdoTitle"), Toast.LENGTH_SHORT).show();
-		tvMarquee.setText(vdoList.get(currVdoIndex).get("vdoTitle"));
-		tvMarquee.setSelected(true);
-	}
-	
-	private void readPlaylist(){
-		vdoManager = new MediaManager(QueueDisplayActivity.this, globalVar.getVdoPath());
-		vdoList = vdoManager.getPlayList();
-	}
-	
-	public Animation scrollingText(){
-		LinearLayout view = (LinearLayout) findViewById(R.id.LinearLayoutMarquee);
-
-	    float width = view.getMeasuredWidth();
-	    float screenWidth = ((Activity) QueueDisplayActivity.this).getWindowManager().getDefaultDisplay().getWidth();
-	    float toXDelta = width - screenWidth;
-	    
-	    Animation mAnimation = new TranslateAnimation(screenWidth, toXDelta, 0, 0);
-	    mAnimation.setDuration(30000); 
-	    mAnimation.setRepeatMode(Animation.RESTART);
-	    mAnimation.setRepeatCount(Animation.INFINITE);
-
-	    return mAnimation;
 	}
 }
